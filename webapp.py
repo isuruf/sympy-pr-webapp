@@ -59,7 +59,7 @@ def add_success_status(sha, commenter):
     }
     return requests.post(url, json=payload, headers=get_header())
 
-approve = ['sign off', 'lgtm', '+1 to merge', '+1 for merge', '+1 for merging']
+review = ['sign off', 'lgtm', '+1 to merge', '+1 for merge', '+1 for merging', 'needs review']
 more_work = ['needs more work', 'need more work', '-1 to merge']
 
 class MainHandler(tornado.web.RequestHandler):
@@ -79,7 +79,7 @@ class MainHandler(tornado.web.RequestHandler):
                 #commit_id = get_pr_last_commit(int(pr))
                 #add_failure_status(commit_id, commenter)
                 author_turn(pr)
-            elif (comment.lower() in approve):
+            elif (comment.lower() in review):
                 #commit_id = get_pr_last_commit(int(pr))
                 #add_success_status(commit_id, commenter)
                 sympy_turn(pr)
