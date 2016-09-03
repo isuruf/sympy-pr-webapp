@@ -9,12 +9,12 @@ def get_header():
     return {'Authorization': 'token {}'.format(token)}
 
 def get_pr_last_commit(id):
-    url = "https://api.github.com/repos/isuruf/symengine/pulls/{}/commits".format(id)
+    url = "https://api.github.com/repos/isuruf/sympy/pulls/{}/commits".format(id)
     obj = requests.get(url, headers=get_header()).json()
     return obj[-1]["sha"]
 
 def add_failure_status(sha, commenter):
-    url = 'https://api.github.com/repos/isuruf/symengine/statuses/{}'.format(sha)
+    url = 'https://api.github.com/repos/isuruf/sympy/statuses/{}'.format(sha)
     payload = {
         "state":"failure",
         "target_url":"",
@@ -23,8 +23,24 @@ def add_failure_status(sha, commenter):
     }
     return requests.post(url, json=payload, headers=get_header())
 
+def add_label(id, label):
+    url = 'https://api.github.com/repos/isuruf/sympy/issues/{}/labels'.format(id)
+    return requests.post(url, json=[label], headers=get_header())
+
+def remove_label(id, label):
+    url = 'https://api.github.com/repos/isuruf/sympy/issues/{}/labels/{}'.format(id, label)
+    return requests.delete(url, headers=get_header())
+
+def author_turn(id):
+    add_label(id, "PR: author's turn")
+    remove_label(id, "PR: sympy's turn")
+
+def sympy_turn(id):
+    add_label(id, "PR: sympy's turn")
+    remove_label(id, "PR: author's turn")
+
 def add_success_status(sha, commenter):
-    url = 'https://api.github.com/repos/isuruf/symengine/statuses/{}'.format(sha)
+    url = 'https://api.github.com/repos/isuruf/sympy/statuses/{}'.format(sha)
     payload = {
         "state":"success",
         "target_url":"",
@@ -33,6 +49,8 @@ def add_success_status(sha, commenter):
     }
     return requests.post(url, json=payload, headers=get_header())
 
+approve = ['sign off', 'lgtm', '+1 to merge', '+1 for merge', '+1 for merging']
+more_work = ['needs more work', 'need more work', '-1 to merge']
 
 class MainHandler(tornado.web.RequestHandler):
     def post(self):
@@ -43,16 +61,28 @@ class MainHandler(tornado.web.RequestHandler):
             self.write('pong')
         elif event == 'issue_comment':
             body = tornado.escape.json_decode(self.request.body)
-            pr = body['issue']['number']
+            pr = int(body['issue']['number'])
             comment = body['comment']['body']
             commenter = body['comment']['user']['login']
 
-            if (comment.lower().find("needs more work") != -1):
-                commit_id = get_pr_last_commit(int(pr))
-                add_failure_status(commit_id, commenter)
-            elif (comment.lower().find("sign off") != -1):
-                commit_id = get_pr_last_commit(int(pr))
-                add_success_status(commit_id, commenter)
+            if (comment.lower() in more_work):
+                #commit_id = get_pr_last_commit(int(pr))
+                #add_failure_status(commit_id, commenter)
+                author_turn(pr)
+            elif (comment.lower() in approve):
+                #commit_id = get_pr_last_commit(int(pr))
+                #add_success_status(commit_id, commenter)
+                sympy_turn(pr)
+        elif event == 'pull_request':
+            body = tornado.escape.json_decode(self.request.body)
+            action = body['action']
+            title = body['pull_request']['title']
+            pr = int(body['pull_request']['number'])
+            if 'WIP' in title:
+                author_turn(pr)
+                return
+            if action == "created" or action == "synchronize":
+                sympy_turn(pr)
         else:
             print('Unhandled event "{}".'.format(event))
             self.set_status(404)
