@@ -91,7 +91,7 @@ class MainHandler(tornado.web.RequestHandler):
             if 'WIP' in title:
                 author_turn(pr)
                 return
-            if action == "created" or action == "synchronize":
+            if action == "opened" or action == "synchronize":
                 sympy_turn(pr)
         else:
             print('Unhandled event "{}".'.format(event))
