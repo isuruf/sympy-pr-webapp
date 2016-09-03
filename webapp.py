@@ -31,12 +31,22 @@ def remove_label(id, label):
     url = 'https://api.github.com/repos/isuruf/sympy/issues/{}/labels/{}'.format(id, label)
     return requests.delete(url, headers=get_header())
 
+def check_label(id, label):
+    url = "https://api.github.com/repos/isuruf/sympy/issues/{}/labels".format(id)
+    obj = requests.get(url, headers=get_header()).json()
+    for l in obj:
+        if l['name'] == label:
+            return True
+    return False
+
 def author_turn(id):
-    add_label(id, "PR: author's turn")
+    if not check_label(id, "PR: author's turn"):
+        add_label(id, "PR: author's turn")
     remove_label(id, "PR: sympy's turn")
 
 def sympy_turn(id):
-    add_label(id, "PR: sympy's turn")
+    if not check_label(id, "PR: sympy's turn"):
+        add_label(id, "PR: sympy's turn")
     remove_label(id, "PR: author's turn")
 
 def add_success_status(sha, commenter):
